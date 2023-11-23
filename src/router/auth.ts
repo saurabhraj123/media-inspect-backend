@@ -1,7 +1,8 @@
 import express from "express";
-import authRouter from "./auth";
 const router = express.Router();
 
-router.use("/auth", authRouter);
+router.get("/signup", (req, res) => {
+  res.send("signup");
+});
 
 export default router;
