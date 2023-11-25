@@ -7,6 +7,11 @@ import _ from "lodash";
 import { Error } from "../types";
 import prisma from "../config/prisma";
 import { formatZodError, generateAuthToken } from "../utils";
+import {
+  SERVER_ERROR,
+  CONFLICT_ERROR,
+  VALIDATION_ERROR,
+} from "../constants/errors";
 
 const router = express.Router();
 
@@ -31,23 +36,29 @@ router.post("/signup", async (req, res) => {
 
     // input validation
     const validationResult = UserSchema.safeParse(req.body);
-    if (!validationResult.success)
+    if (!validationResult.success) {
+      const signupError: SignupError = {
+        type: VALIDATION_ERROR,
+        errors: formatZodError(validationResult.error),
+      };
+
       return res.status(400).send({
-        error: {
-          type: "validation",
-          errors: formatZodError(validationResult.error),
-        } as SignupError,
+        error: signupError,
       });
+    }
 
     // user already exists
     const user = await prisma.user.findUnique({ where: { email: email } });
-    if (user)
+    if (user) {
+      const signupError: SignupError = {
+        type: CONFLICT_ERROR,
+        errors: [{ message: "User already exists" }],
+      };
+
       return res.status(400).send({
-        error: {
-          type: "conflict",
-          errors: [{ message: "User already exists" }],
-        } as SignupError,
+        error: signupError,
       });
+    }
 
     // create new user
     const newUser = await prisma.user.create({
@@ -70,8 +81,12 @@ router.post("/signup", async (req, res) => {
     const token = generateAuthToken(payload);
 
     res.json({ token });
-  } catch (error) {
-    res.status(500).send({ error: "Internal Server Error" });
+  } catch (err) {
+    const error: SignupError = {
+      type: SERVER_ERROR,
+      errors: [{ message: "Something went wrong" }],
+    };
+    res.status(500).send({ error });
   }
 });
 
