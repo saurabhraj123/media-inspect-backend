@@ -1,12 +1,12 @@
 /** External */
 import express from "express";
-import { z } from "zod";
+import { ZodError, z } from "zod";
 import _ from "lodash";
 
 /** Internal */
-import { Error } from "../types";
+import { ApiError } from "../types";
 import prisma from "../config/prisma";
-import { formatZodError, generateAuthToken } from "../utils";
+import { getFormattedErrors, generateAuthToken, getError } from "../utils";
 import {
   SERVER_ERROR,
   CONFLICT_ERROR,
@@ -15,19 +15,18 @@ import {
 
 const router = express.Router();
 
-const UserSchema = z.object({
-  firstName: z.string().min(2),
-  lastName: z.string().min(2),
+const UserLoginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
 });
 
-type UserSignupInput = z.infer<typeof UserSchema>;
+const UserSignupSchema = UserLoginSchema.extend({
+  firstName: z.string().min(2),
+  lastName: z.string().min(2),
+});
 
-type SignupError = {
-  type: string;
-  errors: Error[];
-};
+type UserSignupInput = z.infer<typeof UserSignupSchema>;
+type UserLoginInput = z.infer<typeof UserLoginSchema>;
 
 router.post("/signup", async (req, res) => {
   try {
@@ -35,28 +34,31 @@ router.post("/signup", async (req, res) => {
       req.body as UserSignupInput;
 
     // input validation
-    const validationResult = UserSchema.safeParse(req.body);
-    if (!validationResult.success) {
-      const signupError: SignupError = {
-        type: VALIDATION_ERROR,
-        errors: formatZodError(validationResult.error),
-      };
+    const { success, error } = UserSignupSchema.safeParse(req.body) as {
+      success: Boolean;
+      error: ZodError;
+    };
+
+    if (!success) {
+      const validationError = getError<ApiError>(
+        VALIDATION_ERROR,
+        getFormattedErrors(error)
+      );
 
       return res.status(400).send({
-        error: signupError,
+        error: validationError,
       });
     }
 
     // user already exists
     const user = await prisma.user.findUnique({ where: { email: email } });
     if (user) {
-      const signupError: SignupError = {
-        type: CONFLICT_ERROR,
-        errors: [{ message: "User already exists" }],
-      };
+      const duplicateEmailError = getError<ApiError>(CONFLICT_ERROR, [
+        { message: "User already exists" },
+      ]);
 
       return res.status(400).send({
-        error: signupError,
+        error: duplicateEmailError,
       });
     }
 
@@ -82,12 +84,34 @@ router.post("/signup", async (req, res) => {
 
     res.json({ token });
   } catch (err) {
-    const error: SignupError = {
-      type: SERVER_ERROR,
-      errors: [{ message: "Something went wrong" }],
-    };
-    res.status(500).send({ error });
+    const internalServerError = getError<ApiError>(SERVER_ERROR, [
+      { message: "Internal server error!" },
+    ]);
+    res.status(500).send({ error: internalServerError });
   }
+});
+
+router.post("/login", async (req, res) => {
+  try {
+    const { email, password } = req.body as UserLoginInput;
+
+    // input validation
+    const { success, error } = UserLoginSchema.safeParse(req.body) as {
+      success: Boolean;
+      error: ZodError;
+    };
+
+    if (!success) {
+      const validationError = getError<ApiError>(
+        VALIDATION_ERROR,
+        getFormattedErrors(error)
+      );
+
+      return res.status(400).send({
+        error: validationError,
+      });
+    }
+  } catch (err) {}
 });
 
 export default router;

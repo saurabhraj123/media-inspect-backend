@@ -1,3 +1,3 @@
-import { Error } from "./errors";
+import { Error, ApiError } from "./errors";
 
-export { Error };
+export { Error, ApiError };
