@@ -11,6 +11,7 @@ import {
   SERVER_ERROR,
   CONFLICT_ERROR,
   VALIDATION_ERROR,
+  NOT_FOUND_ERROR,
 } from "../constants/errors";
 
 const router = express.Router();
@@ -111,6 +112,30 @@ router.post("/login", async (req, res) => {
         error: validationError,
       });
     }
+
+    // validate credentials
+    const user = await prisma.user.findUnique({ where: { email, password } });
+
+    if (!user) {
+      const emailQueryResult = await prisma.user.findUnique({
+        where: { email },
+      });
+
+      const invalidCredentialsError = getError<ApiError>(NOT_FOUND_ERROR, [
+        {
+          path: !emailQueryResult ? "email" : "password",
+          message: !emailQueryResult
+            ? "Invalid email id"
+            : "Incorrect password",
+        },
+      ]);
+
+      return res.status(400).send({
+        error: invalidCredentialsError,
+      });
+    }
+
+    return res.send(user);
   } catch (err) {}
 });
 
