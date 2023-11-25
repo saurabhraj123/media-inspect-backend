@@ -1,5 +1,10 @@
 import { generateAuthToken } from "./authUtils";
 import { getFormattedErrors } from "./zodUtils";
-import { getError } from "./common";
+import { getError, getSingleErrorObjectArray } from "./common";
 
-export { generateAuthToken, getFormattedErrors, getError };
+export {
+  generateAuthToken,
+  getFormattedErrors,
+  getError,
+  getSingleErrorObjectArray,
+};

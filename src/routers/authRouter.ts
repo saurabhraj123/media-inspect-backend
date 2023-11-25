@@ -1,18 +1,25 @@
 /** External */
 import express from "express";
 import { ZodError, z } from "zod";
+import bcrypt from "bcrypt";
 import _ from "lodash";
 
 /** Internal */
 import { ApiError } from "../types";
 import prisma from "../config/prisma";
-import { getFormattedErrors, generateAuthToken, getError } from "../utils";
+import {
+  getFormattedErrors,
+  generateAuthToken,
+  getError,
+  getSingleErrorObjectArray,
+} from "../utils";
 import {
   SERVER_ERROR,
   CONFLICT_ERROR,
   VALIDATION_ERROR,
   NOT_FOUND_ERROR,
 } from "../constants/errors";
+import { SALT_ROUNDS } from "../constants/common";
 
 const router = express.Router();
 
@@ -54,14 +61,17 @@ router.post("/signup", async (req, res) => {
     // user already exists
     const user = await prisma.user.findUnique({ where: { email: email } });
     if (user) {
-      const duplicateEmailError = getError<ApiError>(CONFLICT_ERROR, [
-        { message: "User already exists" },
-      ]);
+      const duplicateEmailError = getError<ApiError>(
+        CONFLICT_ERROR,
+        getSingleErrorObjectArray("User already exists")
+      );
 
       return res.status(400).send({
         error: duplicateEmailError,
       });
     }
+
+    const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
 
     // create new user
     const newUser = await prisma.user.create({
@@ -69,10 +79,11 @@ router.post("/signup", async (req, res) => {
         firstName,
         lastName,
         email,
-        password,
+        password: hashedPassword,
       },
     });
 
+    // generate token with the payload
     const payload = {
       id: newUser.id,
       email,
@@ -85,9 +96,11 @@ router.post("/signup", async (req, res) => {
 
     res.send({ token });
   } catch (err) {
-    const internalServerError = getError<ApiError>(SERVER_ERROR, [
-      { message: "Internal server error!" },
-    ]);
+    const internalServerError = getError<ApiError>(
+      SERVER_ERROR,
+      getSingleErrorObjectArray("Internal server error!")
+    );
+
     res.status(500).send({ error: internalServerError });
   }
 });
@@ -114,27 +127,32 @@ router.post("/login", async (req, res) => {
     }
 
     // validate credentials
-    const user = await prisma.user.findUnique({ where: { email, password } });
+    const user = await prisma.user.findUnique({ where: { email } });
 
     if (!user) {
-      const emailQueryResult = await prisma.user.findUnique({
-        where: { email },
-      });
-
-      const invalidCredentialsError = getError<ApiError>(NOT_FOUND_ERROR, [
-        {
-          path: !emailQueryResult ? "email" : "password",
-          message: !emailQueryResult
-            ? "Invalid email id"
-            : "Incorrect password",
-        },
-      ]);
+      const invalidEmailError = getError<ApiError>(
+        NOT_FOUND_ERROR,
+        getSingleErrorObjectArray("Email is not registered", "email")
+      );
 
       return res.status(400).send({
-        error: invalidCredentialsError,
+        error: invalidEmailError,
       });
     }
 
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      const invalidPasswordError = getError<ApiError>(
+        NOT_FOUND_ERROR,
+        getSingleErrorObjectArray("Incorrect password", "password")
+      );
+
+      return res.status(400).send({
+        error: invalidPasswordError,
+      });
+    }
+
+    // generate token with the payload
     const payload = {
       id: user.id,
       email: user.email,
