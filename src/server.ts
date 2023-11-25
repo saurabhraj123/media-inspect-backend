@@ -1,11 +1,48 @@
+/** External */
 import express from "express";
-import router from "./router";
+import { ApolloServer } from "@apollo/server";
+import { expressMiddleware } from "@apollo/server/express4";
+import cors from "cors";
 
-const app = express();
+/** Internal */
+import { authRouter } from "./routers";
 
-app.use("/", router);
+const startServer = async () => {
+  const app = express();
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Listening on port ${PORT}`);
-});
+  app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
+  app.use(cors());
+
+  app.use("/auth", authRouter);
+
+  interface Context {
+    name: string;
+  }
+
+  const server = new ApolloServer<Context>({
+    typeDefs: `type Query { sayHello: String }`,
+    resolvers: {
+      Query: {
+        sayHello: (_, __, ctx) => `Hello ${ctx.name}`,
+      },
+    },
+  });
+
+  await server.start();
+  app.use(
+    "/graphql",
+    expressMiddleware(server, {
+      context: async ({ req }) => {
+        return { name: "Saurabh" };
+      },
+    })
+  );
+
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log(`Listening on port ${PORT}`);
+  });
+};
+
+startServer();
