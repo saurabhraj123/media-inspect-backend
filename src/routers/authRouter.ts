@@ -75,7 +75,7 @@ router.post("/signup", async (req, res) => {
 
     const payload = {
       id: newUser.id,
-      email: newUser.email,
+      email,
       firstName,
       lastName,
       isEmailVerified: newUser.isEmailVerified,
@@ -83,7 +83,7 @@ router.post("/signup", async (req, res) => {
 
     const token = generateAuthToken(payload);
 
-    res.json({ token });
+    res.send({ token });
   } catch (err) {
     const internalServerError = getError<ApiError>(SERVER_ERROR, [
       { message: "Internal server error!" },
@@ -135,7 +135,17 @@ router.post("/login", async (req, res) => {
       });
     }
 
-    return res.send(user);
+    const payload = {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      isEmailVerified: user.isEmailVerified,
+    };
+
+    const token = generateAuthToken(payload);
+
+    res.send({ token });
   } catch (err) {}
 });
 
