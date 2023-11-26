@@ -17,6 +17,6 @@ model User {
   email String @unique @default("")
   password String @default("")
   isEmailVerified Boolean @default(false)
-  verification_token String?
-  created_at DateTime @default(now())
+  verificationToken String?
+  createdAt DateTime @default(now())
 }

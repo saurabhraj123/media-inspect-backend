@@ -2,7 +2,7 @@
 import express from "express";
 import { ZodError, z } from "zod";
 import bcrypt from "bcrypt";
-import _ from "lodash";
+import { EmailJSResponseStatus } from "@emailjs/nodejs";
 
 /** Internal */
 import { ApiError } from "../types";
@@ -12,6 +12,8 @@ import {
   generateAuthToken,
   getError,
   getSingleErrorObjectArray,
+  generateEmailVerificationToken,
+  sendVerificationMail,
 } from "../utils";
 import {
   SERVER_ERROR,
@@ -72,6 +74,7 @@ router.post("/signup", async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
+    const emailVerificationToken = generateEmailVerificationToken();
 
     // create new user
     const newUser = await prisma.user.create({
@@ -80,7 +83,24 @@ router.post("/signup", async (req, res) => {
         lastName,
         email,
         password: hashedPassword,
+        verificationToken: emailVerificationToken,
       },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        isEmailVerified: true,
+        verificationToken: true,
+      },
+    });
+
+    // send verification email
+    const verificationLink = `${process.env.FRONTEND_URI}/verify?token=${emailVerificationToken}`;
+    await sendVerificationMail({
+      email,
+      name: `${firstName} ${lastName}`,
+      verificationLink,
     });
 
     // generate token with the payload
@@ -96,9 +116,14 @@ router.post("/signup", async (req, res) => {
 
     res.send({ token });
   } catch (err) {
+    let errorMessage =
+      err instanceof EmailJSResponseStatus
+        ? "EmailJS error"
+        : "Internal server error!";
+
     const internalServerError = getError<ApiError>(
       SERVER_ERROR,
-      getSingleErrorObjectArray("Internal server error!")
+      getSingleErrorObjectArray(errorMessage)
     );
 
     res.status(500).send({ error: internalServerError });
@@ -127,7 +152,16 @@ router.post("/login", async (req, res) => {
     }
 
     // validate credentials
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        isEmailVerified: true,
+      },
+    });
 
     if (!user) {
       const invalidEmailError = getError<ApiError>(
@@ -164,7 +198,14 @@ router.post("/login", async (req, res) => {
     const token = generateAuthToken(payload);
 
     res.send({ token });
-  } catch (err) {}
+  } catch (err) {
+    const internalServerError = getError<ApiError>(
+      SERVER_ERROR,
+      getSingleErrorObjectArray("Internal server error!")
+    );
+
+    res.status(500).send({ error: internalServerError });
+  }
 });
 
 export default router;

@@ -1,3 +1,7 @@
+/** External */
+import crypto from "crypto";
+
+/** Internal */
 import { Error } from "../types";
 
 export const getError = <ErrorType>(type: string, errors: Error[]) => {
@@ -14,4 +18,8 @@ export const getSingleErrorObjectArray = (message: string, path?: string) => {
       message,
     },
   ];
+};
+
+export const generateEmailVerificationToken = (length = 32) => {
+  return crypto.randomBytes(length).toString("hex");
 };
