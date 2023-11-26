@@ -5,7 +5,7 @@ import _ from "lodash";
 /** Internal */
 import { Error } from "../types";
 
-export const formatZodError = (zodError: ZodError): Error[] => {
+export const getFormattedErrors = (zodError: ZodError): Error[] => {
   const formattedErrors = zodError.issues.map((issue) => {
     let errorMessage: Error = { path: _.get(issue, "path[0]") };
 
