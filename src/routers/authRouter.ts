@@ -2,6 +2,7 @@
 import express from "express";
 import { ZodError, z } from "zod";
 import bcrypt from "bcrypt";
+import moment from "moment";
 import { EmailJSResponseStatus } from "@emailjs/nodejs";
 
 /** Internal */
@@ -109,7 +110,11 @@ router.post("/signup", async (req, res) => {
       email,
       firstName,
       lastName,
-      isEmailVerified: newUser.isEmailVerified,
+      isEmailVerified: false,
+      tokenExpriesAt: moment()
+        .utc()
+        .add(1000 * 60 * 60 * 24, "milliseconds")
+        .toISOString(),
     };
 
     const token = generateAuthToken(payload);
@@ -159,6 +164,7 @@ router.post("/login", async (req, res) => {
         email: true,
         firstName: true,
         lastName: true,
+        password: true,
         isEmailVerified: true,
       },
     });
@@ -193,6 +199,90 @@ router.post("/login", async (req, res) => {
       firstName: user.firstName,
       lastName: user.lastName,
       isEmailVerified: user.isEmailVerified,
+    };
+
+    const token = generateAuthToken(payload);
+
+    res.send({ token });
+  } catch (err) {
+    const internalServerError = getError<ApiError>(
+      SERVER_ERROR,
+      getSingleErrorObjectArray("Internal server error!")
+    );
+
+    res.status(500).send({ error: internalServerError });
+  }
+});
+
+router.get("/verify", async (req, res) => {
+  try {
+    const { token: verificationToken } = req.query as {
+      token: string | undefined;
+    };
+
+    // validate token
+    if (!verificationToken) {
+      const invalidTokenError = getError<ApiError>(
+        VALIDATION_ERROR,
+        getSingleErrorObjectArray("Token not provided!")
+      );
+
+      return res.status(400).send({
+        error: invalidTokenError,
+      });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { verificationToken },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        isEmailVerified: true,
+        tokenExpiresAt: true,
+      },
+    });
+
+    if (!user) {
+      const invalidTokenError = getError<ApiError>(
+        VALIDATION_ERROR,
+        getSingleErrorObjectArray("Invalid token!")
+      );
+
+      return res.status(400).send({
+        error: invalidTokenError,
+      });
+    }
+
+    if (moment() > moment(user.tokenExpiresAt)) {
+      const invalidTokenError = getError<ApiError>(
+        VALIDATION_ERROR,
+        getSingleErrorObjectArray("Token expired!")
+      );
+
+      return res.status(400).send({
+        error: invalidTokenError,
+      });
+    }
+
+    // update user
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        isEmailVerified: true,
+        verificationToken: null,
+        tokenExpiresAt: null,
+      },
+    });
+
+    // generate token with the payload
+    const payload = {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      isEmailVerified: true,
     };
 
     const token = generateAuthToken(payload);
