@@ -10,14 +10,46 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Platform {
+  YOUTUBE
+}
+
 model User {
-  id Int @id @default(autoincrement())
-  firstName String @default("")
-  lastName String @default("")
-  email String @unique @default("")
-  password String @default("")
-  isEmailVerified Boolean @default(false)
-  verificationToken String? @unique
-  tokenExpiresAt DateTime?
-  createdAt DateTime @default(now())
+  id                   Int         @id @default(autoincrement())
+  firstName            String      @default("")
+  lastName             String      @default("")
+  email                String      @unique @default("")
+  password             String      @default("")
+  isEmailVerified      Boolean     @default(false)
+  verificationToken    String?     @unique
+  tokenExpiresAt       DateTime?
+  createdAt            DateTime    @default(now())
+  workspaces           Workspace[] @relation("adminAccess")
+  editAccessWorkspaces Workspace[] @relation("editorAccess")
+}
+
+model Media {
+  id                Int        @id @default(autoincrement())
+  type              String     @default("")
+  title             String     @default("")
+  description       String     @default("")
+  thumbnail         String     @default("")
+  uploadUrl         String     @default("")
+  createdAt         DateTime   @default(now())
+  scheduledUploadAt DateTime?
+  workspaceId       Int
+  Workspace         Workspace? @relation(fields: [workspaceId], references: [id])
+}
+
+model Workspace {
+  id          Int      @id @default(autoincrement())
+  name        String   @default("")
+  description String?  @default("")
+  platform    Platform @default(YOUTUBE)
+  accessToken String?  @default("")
+  ownerId     Int
+  owner       User     @relation("adminAccess", fields: [ownerId], references: [id])
+  editors     User[]   @relation("editorAccess")
+  media       Media[]
+  createdAt   DateTime @default(now())
 }
