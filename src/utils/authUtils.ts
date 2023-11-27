@@ -22,4 +22,29 @@ const sendVerificationMail = async (params: {
   );
 };
 
-export { generateAuthToken, sendVerificationMail };
+const validateAndDecodeToken = (token: string) => {
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET as Secret);
+    return decoded;
+  } catch (error) {
+    return null;
+  }
+};
+
+const validateUser = (authorizationHeader: string) => {
+  if (!authorizationHeader) return null;
+
+  try {
+    const [type, token] = authorizationHeader.split(" ");
+
+    if (type !== "Bearer") return null;
+
+    const user = validateAndDecodeToken(token);
+
+    return user;
+  } catch (err) {
+    return null;
+  }
+};
+
+export { generateAuthToken, sendVerificationMail, validateUser };
