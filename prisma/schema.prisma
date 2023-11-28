@@ -32,7 +32,7 @@ model Media {
   id                Int        @id @default(autoincrement())
   type              String     @default("")
   title             String     @default("")
-  description       String     @default("")
+  description       String?    @default("")
   thumbnail         String     @default("")
   uploadUrl         String     @default("")
   createdAt         DateTime   @default(now())

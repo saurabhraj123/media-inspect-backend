@@ -214,7 +214,7 @@ router.post("/login", async (req, res) => {
   }
 });
 
-router.get("/verify", async (req, res) => {
+router.post("/verify", async (req, res) => {
   try {
     const { token: verificationToken } = req.query as {
       token: string | undefined;
