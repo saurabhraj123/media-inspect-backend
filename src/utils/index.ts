@@ -1,4 +1,8 @@
-import { generateAuthToken, sendVerificationMail } from "./authUtils";
+import {
+  generateAuthToken,
+  sendVerificationMail,
+  validateUser,
+} from "./authUtils";
 import { getFormattedErrors } from "./zodUtils";
 import {
   getError,
@@ -13,4 +17,5 @@ export {
   getSingleErrorObjectArray,
   generateEmailVerificationToken,
   sendVerificationMail,
+  validateUser,
 };
