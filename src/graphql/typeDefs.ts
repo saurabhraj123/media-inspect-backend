@@ -3,6 +3,29 @@ import { gql } from "graphql-tag";
 export const typeDefs = gql`
   type Query {
     sayHello: String
+    me: User
+    workspace(id: Int!): Workspace
+    media(id: Int!): Media
+  }
+
+  type mutation {
+    createWorkspace(
+      name: String!
+      description: String
+      platform: Platform!
+      accessToken: String
+      ownerId: Int!
+    ): Workspace!
+
+    updateWorkspace(
+      workspaceId: Int!
+      name: String
+      description: String
+      platform: Platform
+      accessToken: String
+    ): Workspace!
+
+    deleteWorkspace(workspaceId: Int!): Boolean!
   }
 
   enum Platform {
@@ -17,9 +40,9 @@ export const typeDefs = gql`
     isEmailVerified: Boolean!
     verificationToken: String
     tokenExpiresAt: String
-    createdAt: Date!
-    workspaces: [Workspace]!
-    editAccessWorkspaces: [Workspace]!
+    createdAt: String!
+    workspaces: [Workspace]
+    editAccessWorkspaces: [Workspace]
   }
 
   type Media {
@@ -29,8 +52,8 @@ export const typeDefs = gql`
     description: String
     thumbnailUrl: String!
     uploadUrl: String!
-    scheduledUploadAt: Date!
-    createdAt: Date!
+    scheduledUploadAt: String
+    createdAt: String!
     workspace: Workspace!
   }
 
@@ -43,18 +66,6 @@ export const typeDefs = gql`
     owner: User!
     editors: [User]!
     media: [Media]!
-    createdAt: Date!
-  }
-
-  type Mutation {
-    createWorkspace(
-      name: String!
-      description: String
-      platform: Platform!
-      accessToken: String
-      ownerId: Int!
-    ): Workspace!
-
-    updateWorkspace(workspaceId: Int!): Workspace!
+    createdAt: String!
   }
 `;

@@ -7,7 +7,9 @@ import cors from "cors";
 /** Internal */
 import { authRouter } from "./routers";
 import { validateUser } from "./utils/authUtils";
-import { AuthenticatedRequest } from "./types";
+import { typeDefs } from "./graphql/typeDefs";
+import { resolvers } from "./graphql/resolvers";
+import { AuthenticatedRequest, Context } from "./types";
 
 const startServer = async () => {
   const app = express();
@@ -18,21 +20,9 @@ const startServer = async () => {
 
   app.use("/auth", authRouter);
 
-  interface Context {
-    name?: string;
-    user?: string;
-  }
-
   const server = new ApolloServer<Context>({
-    typeDefs: `type Query { sayHello: String }`,
-    resolvers: {
-      Query: {
-        sayHello: (_, __, ctx) =>
-          `Hello ${ctx.name}. You are ${
-            ctx.user ? "authenticated" : "not authenticated"
-          }`,
-      },
-    },
+    typeDefs,
+    resolvers,
   });
 
   await server.start();
@@ -40,7 +30,7 @@ const startServer = async () => {
     "/graphql",
     expressMiddleware(server, {
       context: async ({ req }: { req: AuthenticatedRequest }) => {
-        const user = validateUser(req.headers.authorization as string);
+        const user = await validateUser(req.headers.authorization as string);
         return { name: "Saurabh", user };
       },
     })
