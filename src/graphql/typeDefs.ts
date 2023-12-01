@@ -1,5 +1,8 @@
+/** External */
 import { gql } from "graphql-tag";
 
+/** Internal */
+import { Platform } from "../types";
 export const typeDefs = gql`
   type Query {
     sayHello: String
@@ -8,12 +11,15 @@ export const typeDefs = gql`
     media(id: Int!): Media
   }
 
-  type mutation {
+  enum Platform {
+    YOUTUBE
+  }
+
+  type Mutation {
     createWorkspace(
       name: String!
       description: String
       platform: Platform!
-      accessToken: String
       ownerId: Int!
     ): Workspace!
 
@@ -26,10 +32,6 @@ export const typeDefs = gql`
     ): Workspace!
 
     deleteWorkspace(workspaceId: Int!): Boolean!
-  }
-
-  enum Platform {
-    YOUTUBE
   }
 
   type User {
@@ -64,8 +66,8 @@ export const typeDefs = gql`
     platform: Platform!
     accessToken: String
     owner: User!
-    editors: [User]!
-    media: [Media]!
+    editors: [User]
+    media: [Media]
     createdAt: String!
   }
 `;

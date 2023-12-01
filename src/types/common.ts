@@ -11,4 +11,8 @@ interface UserPayload {
   isEmailVerified: boolean;
 }
 
-export { Context, UserPayload };
+enum Platform {
+  YOUTUBE,
+}
+
+export { Context, UserPayload, Platform };
